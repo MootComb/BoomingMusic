@@ -40,6 +40,9 @@ class AudioCoverFetcher(
                     ?: contentResolver.openFileDescriptor(cover.uri, "r")?.use { fd ->
                         TagLib.getFrontCover(fd.dup().detachFd())?.data?.inputStream()
                     }
+                    ?: runCatching {
+                        contentResolver.openInputStream(cover.albumId.asAlbumCoverUri())
+                    }.getOrNull()
             } else {
                 contentResolver.openInputStream(cover.albumId.asAlbumCoverUri())
             }
