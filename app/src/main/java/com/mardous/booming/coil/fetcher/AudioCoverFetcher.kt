@@ -36,13 +36,13 @@ class AudioCoverFetcher(
     override suspend fun fetch(): FetchResult? {
         val stream = try {
             if (cover.isIgnoreMediaStore) {
-                AudioCoverUtils.fallback(cover.path, cover.isUseFolderArt)
+                runCatching {
+                    contentResolver.openInputStream(cover.albumId.asAlbumCoverUri())
+                }.getOrNull()
+                    ?: AudioCoverUtils.fallback(cover.path, cover.isUseFolderArt)
                     ?: contentResolver.openFileDescriptor(cover.uri, "r")?.use { fd ->
                         TagLib.getFrontCover(fd.dup().detachFd())?.data?.inputStream()
                     }
-                    ?: runCatching {
-                        contentResolver.openInputStream(cover.albumId.asAlbumCoverUri())
-                    }.getOrNull()
             } else {
                 contentResolver.openInputStream(cover.albumId.asAlbumCoverUri())
             }
