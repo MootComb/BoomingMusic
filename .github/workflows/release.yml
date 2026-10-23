@@ -3,7 +3,7 @@ name: Build & Release APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ master ]
 
 permissions:
   contents: write
@@ -13,30 +13,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'zulu'
           cache: gradle
 
       - name: Setup Android-SDK
-        uses: android-actions/setup-android@v4
+        uses: android-actions/setup-android@v3
 
       - name: Resolve version
         id: ver
         run: |
-          VER=$(grep -E 'versionName\s*=' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          GRADLE_FILE="app/build.gradle.kts"
+
+          VER=$(grep -oE 'versionName\s*=\s*"[^"]+"' "$GRADLE_FILE" | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || true)
+
           if [ -z "$VER" ]; then
-            echo "::error::Could not resolve versionName from app/build.gradle.kts"
+            MAJOR=$(grep -oE 'versionMajor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+' || true)
+            MINOR=$(grep -oE 'versionMinor\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+' || true)
+            PATCH=$(grep -oE 'versionPatch\s*=\s*[0-9]+' "$GRADLE_FILE" | head -1 | grep -oE '[0-9]+' || true)
+            if [ -n "$MAJOR" ] && [ -n "$MINOR" ] && [ -n "$PATCH" ]; then
+              VER="${MAJOR}.${MINOR}.${PATCH}"
+            fi
+          fi
+
+          if [ -z "$VER" ]; then
+            VER=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' || true)
+          fi
+
+          if [ -z "$VER" ]; then
+            echo "::error::Could not resolve version from app/build.gradle.kts or git tags"
             exit 1
           fi
-          echo "value=$VER" >> $GITHUB_OUTPUT
-          echo "tag=v$VER" >> $GITHUB_OUTPUT
+
+          echo "value=$VER" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VER" >> "$GITHUB_OUTPUT"
           echo "Resolved version: $VER"
 
       - name: Create signing key
@@ -62,13 +79,13 @@ jobs:
           ./gradlew assemble${CAP_VARIANT}Release
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: BoomingMusic-${{ steps.ver.outputs.value }}
           path: app/build/outputs/apk/*/release/BoomingMusic-*.apk
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: ${{ steps.ver.outputs.tag }}
