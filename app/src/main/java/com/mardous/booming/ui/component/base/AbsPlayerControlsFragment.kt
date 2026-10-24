@@ -304,7 +304,10 @@ abstract class AbsPlayerControlsFragment(@LayoutRes layoutRes: Int) : Fragment(l
      */
     internal open fun onShow() {
         isShown = true
-        playerAnimator?.start()
+        playerAnimator?.let { animator ->
+            if (!animator.isPrepared) animator.prepare()
+            animator.start()
+        }
         setMarquee(songTitleView, songArtistView, songInfoView, marquee = true)
     }
 
