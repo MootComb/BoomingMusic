@@ -84,19 +84,19 @@ abstract class PlayerAnimator(isEnabled: Boolean) {
         animators: MutableCollection<Animator>,
         view: View,
         interpolator: TimeInterpolator?,
-        delay: Int
+        @Suppress("UNUSED_PARAMETER") delay: Int
     ) {
         val scaleX = ObjectAnimator.ofFloat(view, View.SCALE_X, 0f, 1f).apply {
             this.interpolator = interpolator
-            this.duration = 300
-            this.startDelay = delay.toLong()
+            this.duration = 0L
+            this.startDelay = 0L
         }
         animators.add(scaleX)
 
         val scaleY = ObjectAnimator.ofFloat(view, View.SCALE_Y, 0f, 1f).apply {
             this.interpolator = interpolator
-            this.duration = 300
-            this.startDelay = delay.toLong()
+            this.duration = 0L
+            this.startDelay = 0L
         }
         animators.add(scaleY)
     }
