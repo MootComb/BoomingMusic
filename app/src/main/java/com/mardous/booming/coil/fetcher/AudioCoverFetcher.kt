@@ -40,8 +40,15 @@ class AudioCoverFetcher(
                     contentResolver.openInputStream(cover.albumId.asAlbumCoverUri())
                 }.getOrNull()
                     ?: AudioCoverUtils.fallback(cover.path, cover.isUseFolderArt)
-                    ?: contentResolver.openFileDescriptor(cover.uri, "r")?.use { fd ->
-                        TagLib.getFrontCover(fd.dup().detachFd())?.data?.inputStream()
+                    ?: if (cover.isAlbum) {
+                        // Only albums may fall back to embedded artwork.
+                        contentResolver.openFileDescriptor(cover.uri, "r")?.use { fd ->
+                            TagLib.getFrontCover(fd.dup().detachFd())?.data?.inputStream()
+                        }
+                    } else {
+                        // Tracks always inherit the album artwork, so never read
+                        // the embedded picture of an individual track.
+                        null
                     }
             } else {
                 contentResolver.openInputStream(cover.albumId.asAlbumCoverUri())
@@ -54,12 +61,13 @@ class AudioCoverFetcher(
         if (stream == null &&
             !cover.artistName.isArtistNameUnknown() &&
             NetworkFeature.Images.Albums.isEnabled) {
-            val imageUrl = if (cover.isAlbum) {
-                repository.deezerAlbum(cover.artistName, cover.albumName)?.getBestImage(cover.albumName, imageSize)
-                    ?: repository.deezerTrack(cover.artistName, cover.title)?.getBestImage(imageSize)
-            } else {
-                repository.deezerTrack(cover.artistName, cover.title)?.getBestImage(imageSize)
-            }
+            // Both albums and tracks prefer the album artwork from Deezer and
+            // fall back to the track artwork only when the album lookup fails.
+            val imageUrl =
+                repository.deezerAlbum(cover.artistName, cover.albumName)
+                    ?.getBestImage(cover.albumName, imageSize)
+                    ?: repository.deezerTrack(cover.artistName, cover.title)
+                        ?.getBestImage(imageSize)
             if (imageUrl != null) {
                 val data = loader.components.map(imageUrl, options)
                 val output = loader.components.newFetcher(data, options, loader)
