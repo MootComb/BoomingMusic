@@ -11,17 +11,12 @@ import com.mardous.booming.data.model.network.NetworkFeature
 
 class AudioCoverKeyer : Keyer<AudioCover> {
     override fun key(data: AudioCover, options: Options): String? {
+        // Both albums and tracks resolve to the same album artwork, so the
+        // cache key only depends on the album identity and folder-art flag.
         return buildString {
-            if (data.isAlbum) {
-                append("album::")
-            } else {
-                append("song::")
-            }
+            append("album::")
             append("albumId=").append(data.albumId)
-            append("|uri=").append(data.uri.toString())
-            append("|path=").append(data.path)
             append("|folderArt=").append(data.isUseFolderArt)
-            append("|lastModified=").append(data.lastModified)
         }
     }
 }
