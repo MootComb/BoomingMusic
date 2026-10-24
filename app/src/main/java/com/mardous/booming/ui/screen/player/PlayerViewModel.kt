@@ -386,6 +386,15 @@ class PlayerViewModel(
         songs: List<Song>,
         behavior: SongClickBehavior
     ) = viewModelScope.launch {
+        val clicked = songs.getOrNull(position)
+        val controller = mediaController
+        if (behavior == SongClickBehavior.PlayWholeList &&
+            clicked != null && controller != null &&
+            controller.currentMediaItem?.mediaId == clicked.id.toString()) {
+            if (controller.isPlaying) controller.pause() else controller.play()
+            return@launch
+        }
+
         when (behavior) {
             SongClickBehavior.PlayWholeList -> openQueue(songs, position)
 
