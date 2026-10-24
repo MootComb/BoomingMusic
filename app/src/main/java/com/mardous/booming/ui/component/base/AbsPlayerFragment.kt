@@ -349,7 +349,7 @@ abstract class AbsPlayerFragment(@LayoutRes layoutRes: Int) : Fragment(layoutRes
     private fun applyColorScheme(scheme: PlayerColorScheme): AnimatorSet? {
         cancelColorAnimator()
         colorAnimatorSet = AnimatorSet()
-            .setDuration(scheme.mode.preferredAnimDuration)
+            .setDuration(0L)
             .apply {
                 val tintTargets = getTintTargets(scheme).mapTo(mutableListOf()) {
                     if (it.isSurface) {
