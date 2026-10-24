@@ -394,7 +394,7 @@ abstract class AbsPlayerFragment(@LayoutRes layoutRes: Int) : Fragment(layoutRes
                     precision(Precision.INEXACT)
                     scale(Scale.FILL)
                     memoryCacheKey("nowplaying:song:${song.id}")
-                    crossfade(1000)
+                    crossfade(0)
                     transformations(BlurTransformation(
                         context = it.context,
                         radius = scheme.blurToken.blurRadius.coerceIn(0f, 25f)
