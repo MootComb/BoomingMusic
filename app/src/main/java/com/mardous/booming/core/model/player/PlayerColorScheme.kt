@@ -102,7 +102,7 @@ data class PlayerColorScheme(
         MaterialYou(
             R.string.player_color_mode_material_you_title,
             R.string.player_color_mode_material_you_description,
-            preferredAnimDuration = 1000
+            preferredAnimDuration = 0L
         ),
         Blur(
             R.string.player_color_mode_blur_title,
