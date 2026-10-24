@@ -30,7 +30,7 @@ fun ImageView.songImage(
     song: Song?,
     builder: ImageRequest.Builder.() -> Unit = {}
 ) = load(song) {
-    placeholderDrawableRes(context, DEFAULT_SONG_IMAGE)
+    placeholderDrawableRes(context, DEFAULT_ALBUM_IMAGE)
     builder()
 }
 
