@@ -58,8 +58,23 @@ class QueueStateHolder {
         queue.getOrElse(position.current) { Song.emptySong }
     }
 
+    /**
+     * The next song in the queue. The queue is treated as cyclic for display purposes:
+     * the last item's "next" is the first item, so the UI never falls back to "List end"
+     * on the last track.
+     */
     val nextSong = combine(queue, position) { queue, position ->
-        queue.getOrElse(position.next) { Song.emptySong }
+        if (queue.isEmpty()) {
+            Song.emptySong
+        } else {
+            val index = position.next
+            val safeIndex = when {
+                index < 0 -> 0
+                index >= queue.size -> index % queue.size
+                else -> index
+            }
+            queue[safeIndex]
+        }
     }
 
     /** The total number of items currently in the playback queue. */
