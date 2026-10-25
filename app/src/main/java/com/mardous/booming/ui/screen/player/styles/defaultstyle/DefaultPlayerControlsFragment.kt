@@ -249,6 +249,5 @@ class DefaultPlayerControlsFragment : AbsPlayerControlsFragment(R.layout.fragmen
             prepareForScaleAnimation(binding.songCurrentProgress)
             prepareForScaleAnimation(binding.songTotalTime)
         }
-        }
     }
 }
