@@ -224,6 +224,8 @@ class DefaultPlayerControlsFragment : AbsPlayerControlsFragment(R.layout.fragmen
                     PropertyValuesHolder.ofFloat(View.ROTATION, 360f)
                 ).apply {
                     setInterpolator(DecelerateInterpolator())
+                    duration = 0L
+                    startDelay = 0L
                 }
             )
             addScaleAnimation(animators, binding.shuffleButton, interpolator, 100)
@@ -236,8 +238,8 @@ class DefaultPlayerControlsFragment : AbsPlayerControlsFragment(R.layout.fragmen
 
         override fun onPrepareForAnimation() {
             binding.playPauseButton.apply {
-                scaleX = 0f
-                scaleY = 0f
+                scaleX = 1f
+                scaleY = 1f
                 rotation = 0f
             }
         }
