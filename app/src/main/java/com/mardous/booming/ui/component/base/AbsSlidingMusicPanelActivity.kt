@@ -521,7 +521,7 @@ abstract class AbsSlidingMusicPanelActivity : AbsBaseActivity(),
             binding.navigationView.translationY = progress * 500
             binding.navigationView.alpha = alpha
         }
-        binding.playerContainer.alpha = 1f
+        binding.playerContainer.alpha = (progress - 0.2F) / 0.2F
     }
 
     private fun onPaletteColorChanged() {
