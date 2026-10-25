@@ -162,10 +162,8 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
                     pager.adapter = AlbumCoverPagerAdapter(parentFragmentManager, queue)
                     applyCurrentTransition()
                     pager.doOnPreDraw {
-                        val itemCount = pager.adapter?.count ?: 0
-                        val lastIndex = (itemCount - 1).coerceAtLeast(0)
-                        val target = playerViewModel.position.current.coerceIn(0, lastIndex)
-                        if (itemCount > 0) {
+                        if (queue.isNotEmpty()) {
+                            val target = centerVirtualPosition(playerViewModel.position.current)
                             if (pager.currentItem != target) {
                                 pager.setCurrentItem(target, false)
                             }
@@ -178,8 +176,11 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
         viewLifecycleOwner.launchAndRepeatWithViewLifecycle {
             playerViewModel.positionFlow.collect { position ->
                 _binding?.viewPager?.let { pager ->
-                    if (pager.currentItem != position.current) {
-                        pager.setCurrentItem(position.current, true)
+                    val adapter = pager.adapter as? AlbumCoverPagerAdapter ?: return@let
+                    if (adapter.count == 0) return@let
+                    val target = nearestVirtualPosition(position.current, pager.currentItem)
+                    if (pager.currentItem != target) {
+                        pager.setCurrentItem(target, true)
                     }
                 }
             }
@@ -210,8 +211,10 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
     override fun onPageSelected(position: Int) {
         currentPosition = position
         requestColor(position)
-        if (position != playerViewModel.position.current) {
-            playerViewModel.playSongAt(position)
+        val adapter = viewPager.adapter as? AlbumCoverPagerAdapter ?: return
+        val realIndex = adapter.realIndexOf(position)
+        if (realIndex != playerViewModel.position.current) {
+            playerViewModel.playSongAt(realIndex)
         }
     }
 
@@ -304,6 +307,25 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
         animatorSet.start()
     }
 
+    private fun centerVirtualPosition(realIndex: Int): Int {
+        val realSize = playerViewModel.queue.size
+        if (realSize == 0) return 0
+        val center = Int.MAX_VALUE / 2
+        val base = center - (center % realSize)
+        return base + (realIndex % realSize)
+    }
+
+    private fun nearestVirtualPosition(realIndex: Int, currentVirtual: Int): Int {
+        val realSize = playerViewModel.queue.size
+        if (realSize == 0) return 0
+        val targetReal = realIndex % realSize
+        val currentReal = currentVirtual % realSize
+        var delta = targetReal - currentReal
+        if (delta > realSize / 2) delta -= realSize
+        if (delta < -realSize / 2) delta += realSize
+        return currentVirtual + delta
+    }
+
     private fun requestColor(position: Int) {
         if (playerViewModel.queue.isNotEmpty()) {
             (viewPager.adapter as? AlbumCoverPagerAdapter)
@@ -340,11 +362,12 @@ class AlbumCoverPagerAdapter(fm: FragmentManager, private val dataSet: List<Song
     private var currentColorReceiverPosition = -1
 
     override fun getItem(position: Int): Fragment {
-        return ImageFragment.newInstance(dataSet[position])
+        val realPosition = if (dataSet.isEmpty()) 0 else position % dataSet.size
+        return ImageFragment.newInstance(dataSet[realPosition])
     }
 
     override fun getCount(): Int {
-        return dataSet.size
+        return if (dataSet.isEmpty()) 0 else Int.MAX_VALUE
     }
 
     override fun instantiateItem(container: ViewGroup, position: Int): Any {
@@ -356,9 +379,10 @@ class AlbumCoverPagerAdapter(fm: FragmentManager, private val dataSet: List<Song
     }
 
     /**
-     * Only the latest passed [ImageFragment.ColorReceiver] is guaranteed to receive a response
+     * Only the latest passed [ImageFragment.ColorReceiver] is guaranteed to receive a response.
+     * [position] is a virtual pager position; the token is returned back unchanged.
      */
-    fun receiveColor(paletteReceiver: ColorReceiver, @ColorInt position: Int) {
+    fun receiveColor(paletteReceiver: ColorReceiver, position: Int) {
         val fragment = getFragment(position) as ImageFragment?
         if (fragment != null) {
             currentPaletteReceiver = null
@@ -369,4 +393,7 @@ class AlbumCoverPagerAdapter(fm: FragmentManager, private val dataSet: List<Song
             currentColorReceiverPosition = position
         }
     }
+
+    fun realIndexOf(virtualPosition: Int): Int =
+        if (dataSet.isEmpty()) 0 else virtualPosition % dataSet.size
 }
