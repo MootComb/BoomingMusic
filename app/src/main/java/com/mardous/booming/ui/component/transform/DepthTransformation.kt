@@ -15,38 +15,30 @@
 package com.mardous.booming.ui.component.transform
 
 import android.view.View
-import androidx.viewpager.widget.ViewPager
+import androidx.viewpager2.widget.ViewPager2
 import kotlin.math.abs
 
-class DepthTransformation : ViewPager.PageTransformer {
+class DepthTransformation : ViewPager2.PageTransformer {
     override fun transformPage(page: View, position: Float) {
         page.apply {
             when {
-                position < -1 -> { // [-Infinity,-1)
-                    // This page is way off-screen to the left.
+                position < -1 -> {
                     alpha = 0f
                 }
-                position <= 0 -> { // [-1,0]
-                    // Use the default slide transition when moving to the left page
+                position <= 0 -> {
                     alpha = 1f
                     translationX = 0f
                     scaleX = 1f
                     scaleY = 1f
                 }
-                position <= 1 -> { // (0,1]
-                    // Fade the page out.
+                position <= 1 -> {
                     alpha = 1 - position
-
-                    // Counteract the default slide transition
                     translationX = width * -position
-
-                    // Scale the page down (between MIN_SCALE and 1)
                     val scaleFactor = (MIN_SCALE + (1 - MIN_SCALE) * (1 - abs(position)))
                     scaleX = scaleFactor
                     scaleY = scaleFactor
                 }
-                else -> { // (1,+Infinity]
-                    // This page is way off-screen to the right.
+                else -> {
                     alpha = 0f
                 }
             }

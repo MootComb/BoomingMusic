@@ -23,8 +23,6 @@ import android.annotation.SuppressLint
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.View
-import android.view.ViewGroup
-import androidx.annotation.ColorInt
 import androidx.core.animation.doOnEnd
 import androidx.core.animation.doOnStart
 import androidx.core.view.doOnPreDraw
@@ -33,9 +31,12 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
-import androidx.viewpager.widget.ViewPager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.viewpager2.adapter.FragmentStateAdapter
+import androidx.viewpager2.widget.ViewPager2
 import com.mardous.booming.R
 import com.mardous.booming.core.model.PaletteColor
 import com.mardous.booming.core.model.theme.NowPlayingScreen
@@ -46,7 +47,6 @@ import com.mardous.booming.extensions.keepScreenOn
 import com.mardous.booming.extensions.launchAndRepeatWithViewLifecycle
 import com.mardous.booming.extensions.navigation.findActivityNavController
 import com.mardous.booming.extensions.resources.BOOMING_ANIM_TIME
-import com.mardous.booming.ui.adapters.pager.CustomFragmentStatePagerAdapter
 import com.mardous.booming.ui.component.base.AbsPlayerFragment
 import com.mardous.booming.ui.component.transform.CarouselPagerTransformer
 import com.mardous.booming.ui.screen.player.PlayerGesturesController
@@ -57,11 +57,11 @@ import com.mardous.booming.ui.screen.player.cover.page.ImageFragment.ColorReceiv
 import com.mardous.booming.util.Preferences
 import com.mardous.booming.util.SWIPE_ON_COVER
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 @SuppressLint("ClickableViewAccessibility")
 class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
-    ViewPager.OnPageChangeListener,
     SharedPreferences.OnSharedPreferenceChangeListener,
     NavController.OnDestinationChangedListener {
 
@@ -91,7 +91,21 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
 
     private var callbacks: Callbacks? = null
 
-    private var currentPosition = 0
+    private var currentVirtualPosition = 0
+    private var isProgrammaticScroll = false
+
+    private val pageChangeCallback = object : ViewPager2.OnPageChangeCallback() {
+        override fun onPageSelected(position: Int) {
+            currentVirtualPosition = position
+            requestColor(position)
+            if (isProgrammaticScroll) return
+            val adapter = viewPager.adapter as? AlbumCoverPagerAdapter ?: return
+            val realIndex = adapter.realIndexOf(position)
+            if (realIndex != playerViewModel.position.current) {
+                playerViewModel.playSongAt(realIndex)
+            }
+        }
+    }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -100,7 +114,9 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
             childFragmentManager.findFragmentById(R.id.coverLyricsFragment) as? CoverLyricsFragment
         navController = findActivityNavController(R.id.fragment_container)
         navController?.addOnDestinationChangedListener(this)
-        setupPageTransformer()
+        viewPager.registerOnPageChangeCallback(pageChangeCallback)
+        viewPager.isUserInputEnabled = Preferences.swipeOnCover
+        setupGestureListener()
         setupEventObserver()
         Preferences.registerOnSharedPreferenceChangeListener(this)
     }
@@ -122,20 +138,29 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
             val metrics = resources.displayMetrics
             val ratio = metrics.heightPixels.toFloat() / metrics.widthPixels.toFloat()
             val padding = if (ratio >= 1.777f) 40 else 100
-            viewPager.clipToPadding = false
-            viewPager.setPadding(padding, 0, padding, 0)
-            viewPager.pageMargin = 0
-            viewPager.offscreenPageLimit = 1 // Only adjacent pages are visible in carousel
-            viewPager.setPageTransformer(false, CarouselPagerTransformer(requireContext()))
+            viewPager.offscreenPageLimit = 1
+            viewPager.setPageTransformer(CarouselPagerTransformer(requireContext()))
+            viewPager.getChildAt(0)?.let { child ->
+                (child as? RecyclerView)?.let { recycler ->
+                    recycler.clipToPadding = false
+                    recycler.setPadding(padding, 0, padding, 0)
+                }
+            }
         } else {
-            val (transformer, reverse) = Preferences.getNowPlayingTransition(nps)
+            val (transformer, _) = Preferences.getNowPlayingTransition(nps)
                 .transformerFactory(R.id.player_image)
-            viewPager.offscreenPageLimit = 2 // Parallax and other transitions need more pages
-            viewPager.setPageTransformer(reverse, transformer)
+            viewPager.offscreenPageLimit = 2
+            viewPager.setPageTransformer(transformer)
+            viewPager.getChildAt(0)?.let { child ->
+                (child as? RecyclerView)?.let { recycler ->
+                    recycler.clipToPadding = true
+                    recycler.setPadding(0, 0, 0, 0)
+                }
+            }
         }
     }
 
-    private fun setupPageTransformer() {
+    private fun setupGestureListener() {
         val gesturesListener = (parentFragment as? AbsPlayerFragment)
         if (gesturesListener != null) {
             gesturesController = PlayerGesturesController(
@@ -155,21 +180,16 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
 
     @OptIn(FlowPreview::class)
     private fun setupEventObserver() {
-        viewPager.addOnPageChangeListener(this)
         viewLifecycleOwner.launchAndRepeatWithViewLifecycle {
             playerViewModel.queueFlow.collect { queue ->
                 _binding?.viewPager?.let { pager ->
-                    pager.adapter = AlbumCoverPagerAdapter(parentFragmentManager, queue)
+                    pager.adapter = AlbumCoverPagerAdapter(this@CoverPagerFragment, queue)
                     applyCurrentTransition()
                     pager.doOnPreDraw {
-                        val itemCount = pager.adapter?.count ?: 0
-                        val lastIndex = (itemCount - 1).coerceAtLeast(0)
-                        val target = playerViewModel.position.current.coerceIn(0, lastIndex)
-                        if (itemCount > 0) {
-                            if (pager.currentItem != target) {
-                                pager.setCurrentItem(target, false)
-                            }
-                            onPageSelected(target)
+                        if (queue.isNotEmpty()) {
+                            val target = centerVirtualPosition(playerViewModel.position.current, queue.size)
+                            setCurrentItemProgrammatically(target, false)
+                            requestColor(target)
                         }
                     }
                 }
@@ -178,8 +198,12 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
         viewLifecycleOwner.launchAndRepeatWithViewLifecycle {
             playerViewModel.positionFlow.collect { position ->
                 _binding?.viewPager?.let { pager ->
-                    if (pager.currentItem != position.current) {
-                        pager.setCurrentItem(position.current, true)
+                    val adapter = pager.adapter as? AlbumCoverPagerAdapter ?: return@let
+                    val realSize = adapter.realSize
+                    if (realSize == 0) return@let
+                    val target = nearestVirtualPosition(position.current, pager.currentItem, realSize)
+                    if (pager.currentItem != target) {
+                        setCurrentItemProgrammatically(target, true)
                     }
                 }
             }
@@ -191,12 +215,20 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
         }
     }
 
+    private fun setCurrentItemProgrammatically(position: Int, smooth: Boolean) {
+        isProgrammaticScroll = true
+        viewPager.setCurrentItem(position, smooth)
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewPager.post { isProgrammaticScroll = false }
+        }
+    }
+
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences, key: String?) {
         if (Preferences.getNowPlayingColorSchemeKey(nps) == key) {
-            requestColor(currentPosition)
+            requestColor(currentVirtualPosition)
         } else when (key) {
             SWIPE_ON_COVER -> {
-                viewPager.setAllowSwiping(Preferences.swipeOnCover)
+                viewPager.isUserInputEnabled = Preferences.swipeOnCover
             }
 
             Preferences.getNowPlayingTransitionKey(nps) -> {
@@ -205,22 +237,12 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
         }
     }
 
-    override fun onPageScrolled(position: Int, positionOffset: Float, positionOffsetPixels: Int) {}
-    override fun onPageScrollStateChanged(state: Int) {}
-    override fun onPageSelected(position: Int) {
-        currentPosition = position
-        requestColor(position)
-        if (position != playerViewModel.position.current) {
-            playerViewModel.playSongAt(position)
-        }
-    }
-
     override fun onDestroyView() {
         gesturesController?.release()
         gesturesController = null
+        viewPager.unregisterOnPageChangeCallback(pageChangeCallback)
         viewPager.adapter = null
         viewPager.setOnTouchListener(null)
-        viewPager.removeOnPageChangeListener(this)
         navController?.removeOnDestinationChangedListener(this)
         navController = null
         Preferences.unregisterOnSharedPreferenceChangeListener(this)
@@ -304,6 +326,23 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
         animatorSet.start()
     }
 
+    private fun centerVirtualPosition(realIndex: Int, realSize: Int): Int {
+        if (realSize == 0) return 0
+        val center = Int.MAX_VALUE / 2
+        val base = center - (center % realSize)
+        return base + (realIndex % realSize)
+    }
+
+    private fun nearestVirtualPosition(realIndex: Int, currentVirtual: Int, realSize: Int): Int {
+        if (realSize == 0) return 0
+        val targetReal = realIndex % realSize
+        val currentReal = currentVirtual % realSize
+        var delta = targetReal - currentReal
+        if (delta > realSize / 2) delta -= realSize
+        if (delta < -realSize / 2) delta += realSize
+        return currentVirtual + delta
+    }
+
     private fun requestColor(position: Int) {
         if (playerViewModel.queue.isNotEmpty()) {
             (viewPager.adapter as? AlbumCoverPagerAdapter)
@@ -313,7 +352,7 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
 
     private val colorReceiver = object : ColorReceiver {
         override fun onColorReady(color: PaletteColor, request: Int) {
-            if (currentPosition == request) {
+            if (currentVirtualPosition == request) {
                 callbacks?.onColorChanged(color)
             }
         }
@@ -333,33 +372,34 @@ class CoverPagerFragment : Fragment(R.layout.fragment_player_album_cover),
     }
 }
 
-class AlbumCoverPagerAdapter(fm: FragmentManager, private val dataSet: List<Song>) :
-    CustomFragmentStatePagerAdapter(fm) {
+class AlbumCoverPagerAdapter(
+    fragment: Fragment,
+    private val dataSet: List<Song>
+) : FragmentStateAdapter(fragment) {
 
+    private val fragmentManager: FragmentManager = fragment.childFragmentManager
     private var currentPaletteReceiver: ColorReceiver? = null
     private var currentColorReceiverPosition = -1
 
-    override fun getItem(position: Int): Fragment {
-        return ImageFragment.newInstance(dataSet[position])
-    }
+    val realSize: Int get() = dataSet.size
 
-    override fun getCount(): Int {
-        return dataSet.size
-    }
+    fun realIndexOf(virtualPosition: Int): Int =
+        if (dataSet.isEmpty()) 0 else virtualPosition % dataSet.size
 
-    override fun instantiateItem(container: ViewGroup, position: Int): Any {
-        val o = super.instantiateItem(container, position)
-        if (currentPaletteReceiver != null && currentColorReceiverPosition == position) {
-            receiveColor(currentPaletteReceiver!!, currentColorReceiverPosition)
-        }
-        return o
+    override fun getItemCount(): Int =
+        if (dataSet.isEmpty()) 0 else Int.MAX_VALUE
+
+    override fun createFragment(position: Int): Fragment {
+        val realPosition = realIndexOf(position)
+        return ImageFragment.newInstance(dataSet[realPosition])
     }
 
     /**
-     * Only the latest passed [ImageFragment.ColorReceiver] is guaranteed to receive a response
+     * Only the latest passed [ImageFragment.ColorReceiver] is guaranteed to receive a response.
+     * [position] is a virtual pager position; the token is returned back unchanged.
      */
-    fun receiveColor(paletteReceiver: ColorReceiver, @ColorInt position: Int) {
-        val fragment = getFragment(position) as ImageFragment?
+    fun receiveColor(paletteReceiver: ColorReceiver, position: Int) {
+        val fragment = fragmentManager.findFragmentByTag("f$position") as ImageFragment?
         if (fragment != null) {
             currentPaletteReceiver = null
             currentColorReceiverPosition = -1

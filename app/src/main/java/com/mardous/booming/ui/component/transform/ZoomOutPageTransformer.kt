@@ -15,7 +15,7 @@
 package com.mardous.booming.ui.component.transform
 
 import android.view.View
-import androidx.viewpager.widget.ViewPager
+import androidx.viewpager2.widget.ViewPager2
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -23,7 +23,7 @@ import kotlin.math.max
  * @author Hemanth S (h4h13).
  */
 
-class ZoomOutPageTransformer : ViewPager.PageTransformer {
+class ZoomOutPageTransformer : ViewPager2.PageTransformer {
 
     override fun transformPage(page: View, position: Float) {
         page.apply {
@@ -31,13 +31,11 @@ class ZoomOutPageTransformer : ViewPager.PageTransformer {
             val pageHeight = height
 
             when {
-                position < -1 -> { // [-Infinity,-1)
-                    // This page is way off-screen to the left.
+                position < -1 -> {
                     alpha = 1f
                     scaleY = 0.7f
                 }
-                position <= 1 -> { // [-1,1]
-                    // Modify the default slide transition to shrink the page as well
+                position <= 1 -> {
                     val scaleFactor = max(MIN_SCALE, 1 - abs(position))
                     val vertMargin = pageHeight * (1 - scaleFactor) / 2
                     val horzMargin = pageWidth * (1 - scaleFactor) / 2
@@ -47,16 +45,10 @@ class ZoomOutPageTransformer : ViewPager.PageTransformer {
                         -horzMargin + vertMargin / 2
                     }
 
-                    // Scale the page down (between MIN_SCALE and 1)
                     scaleX = scaleFactor
                     scaleY = scaleFactor
-
-                    // Fade the page relative to its size.
-                    //setAlpha(MIN_ALPHA + (scaleFactor - MIN_SCALE) / (1 - MIN_SCALE) * (1 - MIN_ALPHA));
-
                 }
-                else -> { // (1,+Infinity]
-                    // This page is way off-screen to the right.
+                else -> {
                     alpha = 1f
                     scaleY = 0.7f
                 }

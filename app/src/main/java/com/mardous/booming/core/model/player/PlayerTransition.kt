@@ -1,6 +1,6 @@
 package com.mardous.booming.core.model.player
 
-import androidx.viewpager.widget.ViewPager
+import androidx.viewpager2.widget.ViewPager2
 import com.mardous.booming.R
 import com.mardous.booming.ui.component.transform.*
 
@@ -15,7 +15,7 @@ enum class PlayerTransition(val nameRes: Int) {
     ZoomOut(R.string.zoom_out),
     Parallax(R.string.parallax);
 
-    val transformerFactory: (Int) -> Pair<ViewPager.PageTransformer?, Boolean>
+    val transformerFactory: (Int) -> Pair<ViewPager2.PageTransformer?, Boolean>
         get() = when (this) {
             Cascading -> { _ -> CascadingPageTransformer() to true }
             Depth -> { _ -> DepthTransformation() to true }
@@ -24,7 +24,7 @@ enum class PlayerTransition(val nameRes: Int) {
             VerticalFlip -> { _ -> VerticalFlipTransformation() to true }
             Stack -> { _ -> VerticalStackTransformer() to true }
             ZoomOut -> { _ -> ZoomOutPageTransformer() to true }
-            Parallax -> { id -> ParallaxPagerTransformer(id).apply { setSpeed(0.3f) } to false}
+            Parallax -> { id -> ParallaxPagerTransformer(id).apply { setSpeed(0.3f) } to false }
             Simple -> { _ -> Pair(null, true) }
-    }
+        }
 }

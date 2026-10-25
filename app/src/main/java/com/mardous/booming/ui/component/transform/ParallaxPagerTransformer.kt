@@ -15,13 +15,13 @@
 package com.mardous.booming.ui.component.transform
 
 import android.view.View
-import androidx.viewpager.widget.ViewPager
+import androidx.viewpager2.widget.ViewPager2
 
 /**
  * Created by xgc1986 on 2/Apr/2016
  */
 
-class ParallaxPagerTransformer(private val id: Int) : ViewPager.PageTransformer {
+class ParallaxPagerTransformer(private val id: Int) : ViewPager2.PageTransformer {
     private var speed = 0.2f
 
     override fun transformPage(page: View, position: Float) {

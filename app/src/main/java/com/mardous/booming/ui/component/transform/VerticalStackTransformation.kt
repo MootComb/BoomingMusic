@@ -1,9 +1,9 @@
 package com.mardous.booming.ui.component.transform
 
 import android.view.View
-import androidx.viewpager.widget.ViewPager
+import androidx.viewpager2.widget.ViewPager2
 
-class VerticalStackTransformer : ViewPager.PageTransformer {
+class VerticalStackTransformer : ViewPager2.PageTransformer {
     override fun transformPage(page: View, position: Float) {
         page.apply {
             if (position >= 0) {
@@ -13,6 +13,5 @@ class VerticalStackTransformer : ViewPager.PageTransformer {
                 translationY = -30 * position
             }
         }
-
     }
 }

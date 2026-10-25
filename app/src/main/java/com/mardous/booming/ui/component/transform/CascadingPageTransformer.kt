@@ -15,17 +15,17 @@
 package com.mardous.booming.ui.component.transform
 
 import android.view.View
-import androidx.viewpager.widget.ViewPager
+import androidx.viewpager2.widget.ViewPager2
 import kotlin.math.abs
 
-class CascadingPageTransformer : ViewPager.PageTransformer {
+class CascadingPageTransformer : ViewPager2.PageTransformer {
 
     private var mScaleOffset = 40
 
     override fun transformPage(page: View, position: Float) {
         page.apply {
             when {
-                position < -1 -> { // [-Infinity,-1)
+                position < -1 -> {
                     alpha = 0f
                 }
                 position <= 0 -> {
