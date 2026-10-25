@@ -435,11 +435,9 @@ abstract class AbsSlidingMusicPanelActivity : AbsBaseActivity(),
         setLightNavigationBar()
         playerFragment?.onHide()
         releaseExpandedPanelFocus()
-        binding.playerContainer.isVisible = false
     }
 
     protected open fun onPanelExpanded() {
-        binding.playerContainer.isVisible = true
         setMiniPlayerAlphaProgress(1f)
         onPaletteColorChanged()
         playerFragment?.onShow()
