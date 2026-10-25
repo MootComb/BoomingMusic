@@ -242,6 +242,13 @@ class DefaultPlayerControlsFragment : AbsPlayerControlsFragment(R.layout.fragmen
                 scaleY = 1f
                 rotation = 0f
             }
+            prepareForScaleAnimation(binding.previousButton)
+            prepareForScaleAnimation(binding.nextButton)
+            prepareForScaleAnimation(binding.shuffleButton)
+            prepareForScaleAnimation(binding.repeatButton)
+            prepareForScaleAnimation(binding.songCurrentProgress)
+            prepareForScaleAnimation(binding.songTotalTime)
+        }
         }
     }
 }
