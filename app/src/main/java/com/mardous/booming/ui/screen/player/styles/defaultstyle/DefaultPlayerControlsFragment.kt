@@ -51,9 +51,6 @@ import com.mardous.booming.util.DISPLAY_NEXT_SONG
 import com.mardous.booming.util.Preferences
 import java.util.LinkedList
 
-/**
- * @author Christians M. A. (mardous)
- */
 class DefaultPlayerControlsFragment : AbsPlayerControlsFragment(R.layout.fragment_default_player_playback_controls) {
 
     private var _binding: FragmentDefaultPlayerPlaybackControlsBinding? = null
@@ -219,12 +216,12 @@ class DefaultPlayerControlsFragment : AbsPlayerControlsFragment(R.layout.fragmen
             animators.add(
                 ObjectAnimator.ofPropertyValuesHolder(
                     binding.playPauseButton,
-                    PropertyValuesHolder.ofFloat(View.SCALE_X, 1f),
-                    PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f),
-                    PropertyValuesHolder.ofFloat(View.ROTATION, 360f)
+                    PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1f),
+                    PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1f),
+                    PropertyValuesHolder.ofFloat(View.ROTATION, 0f, 0f)
                 ).apply {
                     setInterpolator(DecelerateInterpolator())
-                    duration = 0L
+                    duration = 1L
                     startDelay = 0L
                 }
             )
@@ -241,6 +238,23 @@ class DefaultPlayerControlsFragment : AbsPlayerControlsFragment(R.layout.fragmen
                 scaleX = 1f
                 scaleY = 1f
                 rotation = 0f
+                alpha = 1f
+            }
+            listOf(
+                binding.shuffleButton,
+                binding.repeatButton,
+                binding.previousButton,
+                binding.nextButton,
+                binding.songCurrentProgress,
+                binding.songTotalTime
+            ).forEach { view ->
+                view.scaleX = 1f
+                view.scaleY = 1f
+                view.alpha = 1f
+                view.rotation = 0f
+                view.translationX = 0f
+                view.translationY = 0f
+                view.visibility = View.VISIBLE
             }
         }
     }
