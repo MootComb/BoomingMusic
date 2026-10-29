@@ -68,9 +68,6 @@ import kotlinx.coroutines.withContext
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import java.lang.ref.WeakReference
 
-/**
- * @author Christians M. A. (mardous)
- */
 abstract class AbsPlayerControlsFragment(@LayoutRes layoutRes: Int) : Fragment(layoutRes),
     View.OnClickListener,
     View.OnLongClickListener,
@@ -299,9 +296,6 @@ abstract class AbsPlayerControlsFragment(@LayoutRes layoutRes: Int) : Fragment(l
         }
     }
 
-    /**
-     * Called to notify that the player has been expanded.
-     */
     internal open fun onShow() {
         isShown = true
         playerAnimator?.let { animator ->
@@ -311,9 +305,6 @@ abstract class AbsPlayerControlsFragment(@LayoutRes layoutRes: Int) : Fragment(l
         setMarquee(songTitleView, songArtistView, songInfoView, marquee = true)
     }
 
-    /**
-     * Called to notify that the player has been collapsed.
-     */
     internal open fun onHide() {
         playerAnimator?.prepare()
         setMarquee(songTitleView, songArtistView, songInfoView, marquee = false)
