@@ -37,6 +37,7 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.appcompat.widget.Toolbar
 import androidx.core.content.ContextCompat
 import androidx.core.os.postDelayed
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -145,7 +146,10 @@ abstract class AbsPlayerFragment(@LayoutRes layoutRes: Int) : Fragment(layoutRes
         }
         viewLifecycleOwner.launchAndRepeatWithViewLifecycle {
             playerViewModel.colorSchemeFlow.collect { scheme ->
-                applyColorScheme(scheme)?.start()
+                if (scheme == PlayerColorScheme.Unspecified) return@collect
+                view.doOnPreDraw {
+                    applyColorScheme(scheme)?.start()
+                }
             }
         }
         viewLifecycleOwner.launchAndRepeatWithViewLifecycle {
@@ -572,16 +576,6 @@ abstract class AbsPlayerFragment(@LayoutRes layoutRes: Int) : Fragment(layoutRes
     }
 
     fun MaterialButton.setIsFavorite(isFavorite: Boolean, withAnimation: Boolean) {
-        /*
-        val iconRes = if (withAnimation) {
-            if (isFavorite) R.drawable.avd_favorite else R.drawable.avd_unfavorite
-        } else {
-            if (isFavorite) R.drawable.ic_favorite_24dp else R.drawable.ic_favorite_outline_24dp
-        }
-         */
-        // There's a bug in the Material Components library that affects the
-        // icon animation on a MaterialButton, so for now, we'll change the
-        // icon in a simple way.
         val iconRes = if (isFavorite) R.drawable.ic_favorite_24dp else R.drawable.ic_favorite_outline_24dp
         icon = ContextCompat.getDrawable(context, iconRes).also { drawable ->
             if (drawable is AnimatedVectorDrawable) {
@@ -682,12 +676,9 @@ fun goToDestination(
     if (activity !is MainActivity) return
     activity.apply {
         if (removeTransition) {
-            // Remove exit transition of current fragment, so
-            // it doesn't exit with a weird transition
             currentFragment(R.id.fragment_container)?.exitTransition = null
         }
 
-        //Hide Bottom Bar First, else Bottom Sheet doesn't collapse fully
         setBottomNavVisibility(false)
         if (getBottomSheetBehavior().state == BottomSheetBehavior.STATE_EXPANDED) {
             collapsePanel()

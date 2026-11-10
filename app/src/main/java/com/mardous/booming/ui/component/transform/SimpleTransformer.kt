@@ -1,9 +1,9 @@
 package com.mardous.booming.ui.component.transform
 
 import android.view.View
-import androidx.viewpager2.widget.ViewPager2
+import androidx.viewpager.widget.ViewPager
 
-class SimplePageTransformer : ViewPager2.PageTransformer {
+class SimplePageTransformer : ViewPager.PageTransformer {
     override fun transformPage(page: View, position: Float) {
         // no-op: page remains in place, no scaling or translation
     }
